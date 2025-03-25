@@ -8,14 +8,14 @@ use crate::vdom::{VDom, VNode};
 
 
 pub fn parse_element(element: &ElementRef) -> VNode {
-    parse_element_internal(element, false, true).expect("parse_element failed")
+    parse_element_internal(element, false, true, true).expect("parse_element failed")
 }
 
 pub fn parse_templates(element: &ElementRef) -> VNode {
-    parse_element_internal(element, true, true).expect("parse_templates failed")
+    parse_element_internal(element, true, true, false).expect("parse_templates failed")
 }
 
-fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bool) -> Result<VNode, String> {
+fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bool, ignore_templates: bool) -> Result<VNode, String> {
     let tag = element.value().name().to_string();
 
     if inside_template && tag == "template" && start == false {
@@ -41,23 +41,34 @@ fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bo
 
     let children = element
         .children()
-        .filter_map(|child| match child.value() {
-            scraper::Node::Text(text) => {
-                if text.trim().is_empty() {
-                    None
-                } else {
-                    Some(Ok(Rc::new(RefCell::new(VNode::Text {
-                        internal_id: Ulid::new(),
-                        template: text.trim().to_string(),
-                        rendered: String::new(),
-                    }))))
+        .filter_map(|child| {
+            {
+                let node = child.value();
+                if let Node::Element(el) = node {
+                    if el.name() == "template" {
+                        return None; // ❌ template ignorieren
+                    }
                 }
-            },
-            scraper::Node::Element(_) => {
-                let el = ElementRef::wrap(child).unwrap();
-                Some(parse_element_internal(&el, inside_template, false).map(|n| Rc::new(RefCell::new(n))))
             }
-            _ => None,
+            match child.value() {
+                scraper::Node::Text(text) => {
+                    if text.trim().is_empty() {
+                        None
+                    } else {
+                        Some(Ok(Rc::new(RefCell::new(VNode::Text {
+                            internal_id: Ulid::new(),
+                            template: text.trim().to_string(),
+                            rendered: String::new(),
+                            is_dirty: true,
+                        }))))
+                    }
+                },
+                scraper::Node::Element(_) => {
+                    let el = ElementRef::wrap(child).unwrap();
+                    Some(parse_element_internal(&el, inside_template, false, ignore_templates).map(|n| Rc::new(RefCell::new(n))))
+                }
+                _ => None,
+            }
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -68,7 +79,7 @@ fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bo
         attributes,
         styles,
         children,
-        is_dirty: false,
+        is_dirty: true,
         template,
         for_each,
     })
@@ -109,15 +120,16 @@ pub fn parse_html_to_vdom(html: &str) -> Result<VDom, String> {
         let id = tpl.value().attr("id").ok_or("template without id")?.to_string();
 
         let count = tpl
+        .first_child().unwrap()
         .children()
         .filter_map(|child| {
             ElementRef::wrap(child)
         })
         .count();
 
-        info!("count {}", count);
 
         let mut tpl_children = tpl
+            .first_child().unwrap()
             .children()
             .filter_map(|child| {
                 ElementRef::wrap(child)
@@ -134,31 +146,7 @@ pub fn parse_html_to_vdom(html: &str) -> Result<VDom, String> {
 
     let body = document.select(&body_selector).next().ok_or("<body> not found")?;
 
-    let root_children = body
-        .children()
-        .filter_map(|child| {
-            let node = child.value();
-            if let Node::Element(el) = node {
-                if el.name() == "template" {
-                    return None; // ❌ template ignorieren
-                }
-            }
-            ElementRef::wrap(child)
-        })
-        .map(|el| Rc::new(RefCell::new(parse_element(&el))))
-        .collect();
-
-    let root = Rc::new(RefCell::new(VNode::Element {
-        internal_id: Ulid::new(),
-        id: None,
-        tag: "body".to_string(),
-        attributes: HashMap::new(),
-        styles: HashMap::new(),
-        children: root_children,
-        is_dirty: false,
-        template: None,
-        for_each: None,
-    }));
+    let root = Rc::new(RefCell::new(parse_element(&body)));
 
     index_node(&root, &mut id_index, &mut id_map);
 

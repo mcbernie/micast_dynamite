@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
 
 use log::{info, warn};
 use mlua::{AnyUserData, Lua, Result, UserData, UserDataMethods, Value};
@@ -11,39 +11,36 @@ use ulid::Ulid;
 use crate::vdom::{VDom, VNode};
 
 #[derive(Clone)]
+pub struct ElementContext {
+    pub internal_id: Ulid,
+    pub values: Rc<RefCell<HashMap<String, String>>>,
+}
+
+
+#[derive(Clone)]
 pub struct VDomContext(pub Rc<RefCell<VDom>>);
 
 impl mlua::UserData for VDomContext {}
 
 
-#[derive(Clone)]
-pub struct ElementContext(pub Ulid);
 
 impl mlua::UserData for ElementContext {
     fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
-        // Beispiel: set_text-Methode, die anhand der ID das Element im VDOM updatet.
         methods.add_method("set_text", |lua, this, (key, value): (String, String)| {
-            // Hole das globale VDOM – hier gehen wir davon aus, dass du es z. B. im Lua-Registry abgelegt hast.
+            this.values.borrow_mut().insert(key.clone(), value);
+
             let globals = lua.globals();
             let vdom_ud: mlua::AnyUserData = globals.get("_vdom")?;
             let vdom_context = vdom_ud.borrow::<VDomContext>()?;
-            
-            // Jetzt kannst du auf das VDOM zugreifen:
             let vdom = vdom_context.0.clone();
-            info!("set_text: {}", key);
-            
-            // Suche das Element im VDOM anhand der ULID.
-            if let Some(element) = vdom.borrow_mut().get_element_by_internal_id(&this.0) {
-                info!("some element!");
-                // Setze den Text oder ein Attribut; hier als Beispiel:
-                if let VNode::Element { internal_id, id, attributes, is_dirty, .. } = &mut *element.borrow_mut() {
-                    warn!("Setting text for element with ID: {} internal:{}", id.as_deref().unwrap_or("None"), internal_id);
-                    attributes.insert(key, value);
-                    *is_dirty = true;
-                }
+
+            if let Some(node) = vdom.borrow().get_element_by_internal_id(&this.internal_id) {
+                render_texts_in_subtree(&node, &this.values.borrow())?;
             }
+
             Ok(())
         });
+
     }
 }
 
@@ -59,14 +56,42 @@ impl mlua::UserData for ElementContext {
 //    }
 //}
 
-fn get_webdata(lua: &Lua, url: String) -> Result<String> {
+fn render_texts_in_subtree(
+    node: &Rc<RefCell<VNode>>,
+    ctx: &HashMap<String, String>,
+) -> Result<()> {
+    let re = Regex::new(r"\{\{\s*(\w+)\s*\}\}").unwrap();
+
+    match &mut *node.borrow_mut() {
+        VNode::Text { template, rendered, is_dirty, .. } => {
+            let replaced = re.replace_all(template, |caps: &regex::Captures| {
+                let key = &caps[1];
+                ctx.get(key).cloned().unwrap_or_default()
+            });
+
+            *rendered = replaced.into_owned();
+            *is_dirty = true;
+        }
+        VNode::Element { children, .. } => {
+            for child in children {
+                render_texts_in_subtree(child, ctx)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+
+fn get_webdata(_lua: &Lua, url: String) -> Result<String> {
     let response = get(&url).and_then(|resp| resp.text()).unwrap_or_else(|_| "{}".to_string());
     Ok(response)
 }
 
 /// Erzeugt ein Element aus einer Vorlage und gibt ein leichtes Handle (ElementContext) zurück.
 /// Dabei wird eine ULID generiert, die als ID im VDOM verwendet wird.
-fn create_element(lua: &Lua, vdom: Rc<RefCell<VDom>>, template_id: String) -> Result<mlua::Value> {
+fn create_element(lua: &Lua, vdom: Rc<RefCell<VDom>>, template_id: String, parent_id: String) -> Result<mlua::Value> {
+    log::info!("create_element: {}", template_id);
     let e = {
         let vdom_ref = vdom.borrow();
         let a = vdom_ref.create_element_from_template(&template_id);
@@ -81,15 +106,18 @@ fn create_element(lua: &Lua, vdom: Rc<RefCell<VDom>>, template_id: String) -> Re
         };
 
         {
-            let mut vdom_mut = vdom.borrow_mut();
-            let root = vdom_mut.root.clone();
-            vdom_mut.insert_element(root, element);
+            let mut vdom = vdom.borrow_mut();
+            vdom.add_element(&parent_id, element)
+                .map_err(|e| mlua::Error::external(format!("add_element failed: {}", e)))?;
         }
         // Registriere das Element intern im VDOM (z. B. in einer HashMap)
         //vdom_mut.register_element(id.clone(), Rc::clone(&element));
         
         // Gib ein leichtes Handle (ElementContext) an Lua zurück.
-        let handle = lua.create_userdata(ElementContext(id))?;
+        let handle = lua.create_userdata(ElementContext{
+            internal_id: id,
+            values: Rc::new(RefCell::new(HashMap::new())),
+        })?;
         Ok(mlua::Value::UserData(handle))
     } else {
         Ok(mlua::Value::Nil)
@@ -101,11 +129,9 @@ pub fn register_lua_api(lua: &Lua, vdom: Rc<RefCell<VDom>>) -> Result<()> {
 
     globals.set("_vdom", lua.create_userdata(VDomContext(vdom.clone()))?)?;
 
-
-
     let cloned_vdom = vdom.clone();
-    globals.set("create_element", lua.create_function(move |lua, id: String| {
-        create_element(lua, cloned_vdom.clone(), id)
+    globals.set("create_element", lua.create_function(move |lua, (id, parent_id) : (String, String)| {
+        create_element(lua, cloned_vdom.clone(), id, parent_id)
     })?)?;
     //globals.set("set_text", lua.create_function(set_text)?)?;
     globals.set("get_webdata", lua.create_function(get_webdata)?)?;
@@ -120,10 +146,11 @@ pub fn register_lua_api(lua: &Lua, vdom: Rc<RefCell<VDom>>) -> Result<()> {
         };
 
         if let Some(element) = e {
-
             let id = element.borrow().get_internal_id().clone();
-
-            let handle = lua.create_userdata(ElementContext(id))?;
+            let handle = lua.create_userdata(ElementContext{
+                internal_id: id,
+                values: Rc::new(RefCell::new(HashMap::new())),
+            })?;
             Ok(mlua::Value::UserData(handle))
         } else {
             Ok(mlua::Value::Nil)
@@ -141,8 +168,8 @@ pub fn register_lua_api(lua: &Lua, vdom: Rc<RefCell<VDom>>) -> Result<()> {
         let element_rc = {
             let vdom = cloned_vdom.borrow();
 
-            info!("get element for add_element: {}", node.0);
-            vdom.get_element_by_internal_id(&node.0)
+            info!("get element for add_element: {}", node.internal_id);
+            vdom.get_element_by_internal_id(&node.internal_id)
                 .ok_or(mlua::Error::external("Element not found"))?
                 .clone()
         };
@@ -167,7 +194,6 @@ pub fn load_lua_scripts(lua: &Lua, html: &str) -> Result<()> {
 
     for script in document.select(&script_selector) {
         if let Some(script_content) = script.text().next() {
-            println!("script_content: {}", script_content);
             lua.load(script_content).exec()?;
         }
     }

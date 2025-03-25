@@ -18,6 +18,7 @@ pub enum VNode {
     },
     Text {
         internal_id: Ulid,
+        is_dirty: bool,
         template: String,
         rendered: String,
     },
@@ -43,33 +44,33 @@ pub struct VDom {
 
 impl VDom {
 
-    pub fn rebuild_index(&mut self) {
-        self.id_index.clear();
-        self.index_node(Rc::clone(&self.root));
-    }
+    //pub fn rebuild_index(&mut self) {
+    //    self.id_index.clear();
+    //    self.index_node(Rc::clone(&self.root));
+    //}
 
-    pub fn index_node(&mut self, node: Rc<RefCell<VNode>>) {
-        let node_ref = node.borrow();
-        if let VNode::Element { internal_id, children, .. } = &*node_ref {
-            self.id_index.insert(internal_id.clone(), Rc::clone(&node));
-            for child in children {
-                self.index_node(Rc::clone(child));
-            }
-        }
-    }
+    //fn index_node(&mut self, node: Rc<RefCell<VNode>>) {
+    //    let node_ref = node.borrow();
+    //    if let VNode::Element { internal_id, children, .. } = &*node_ref {
+    //        self.id_index.insert(internal_id.clone(), Rc::clone(&node));
+    //        for child in children {
+    //            self.index_node(Rc::clone(child));
+    //        }
+    //    }
+    //}
 
     pub fn get_element_by_id(&self, id: &str) -> Option<Rc<RefCell<VNode>>> {
         self.id_map.get(id).and_then(|id| self.id_index.get(id)).cloned()
     }
 
-    pub fn insert_element(&mut self, target: Rc<RefCell<VNode>>, child: Rc<RefCell<VNode>>) {
-        let mut target_node = target.borrow_mut();
-        if let VNode::Element { children, is_dirty, .. } = &mut *target_node {
-            children.push(child.clone());
-            *is_dirty = true;
-        }
-        self.index_node(child);
-    }
+    //pub fn insert_element(&mut self, target: Rc<RefCell<VNode>>, child: Rc<RefCell<VNode>>) {
+    //    let mut target_node = target.borrow_mut();
+    //    if let VNode::Element { children, is_dirty, .. } = &mut *target_node {
+    //        children.push(child.clone());
+    //        *is_dirty = true;
+    //    }
+    //    self.index_node(child);
+    //}
 
     pub fn add_element(&mut self, target_id: &str, child: Rc<RefCell<VNode>>) -> Result<(), String> {
         let target_ulid = self.id_map.get(target_id).ok_or("target id not found")?;
@@ -119,8 +120,9 @@ impl VDom {
         if let Some(template) = self.templates.get(template_id) {
             let cloned_template = Self::deep_clone_node(template, true);
             match &mut *cloned_template.borrow_mut() {
-                VNode::Element { tag ,..} => {
+                VNode::Element { tag, is_dirty,..} => {
                     *tag = "div".to_string();
+                    *is_dirty = true;
                 }
                 _ => {}
             }
@@ -147,10 +149,11 @@ impl VDom {
                 styles: styles.clone(),
                 template: template.clone(),
             })),
-            VNode::Text { internal_id, template, rendered } => Rc::new(RefCell::new(VNode::Text {
+            VNode::Text { internal_id, template, rendered, is_dirty } => Rc::new(RefCell::new(VNode::Text {
                 internal_id: if new_id { Ulid::new() } else {internal_id.clone()},
                 template: template.clone(),
                 rendered: rendered.clone(),
+                is_dirty: *is_dirty
             })),
         }
     }

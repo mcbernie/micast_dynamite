@@ -17,20 +17,10 @@
     
     <!-- 🌱 Template für Wetter-Karten -->
     <template id="weather_card">
-
-
-         
-        <div>
-            <div class="card">
-                <h2>{{ city }}</h2>
-                <p>Temperatur: {{ temp }}°C</p>
-            </div>
-
+        <div id="fu" class="mard">
+            <h2>{{ city }}</h2>
+            <p>Temperatur: {{ temp }}°C</p>
         </div>
-
-
-
-
     </template>
 
     <!-- 🌱 Container für generierte Inhalte -->
@@ -45,10 +35,9 @@
 
             -- 🌱 Für jedes Wetter-Daten-Objekt eine Karte erstellen
             for _, entry in ipairs(weather_data) do
-                local card = create_element("weather_card") -- 🎨 Template klonen
+                local card = create_element("weather_card", "weather_list") -- 🎨 Template klonen
                 card:set_text("city", entry.city)
                 card:set_text("temp", tostring(entry.temp))
-                add_element("weather_list", card) -- ➕ In den Container einfügen
             end
         end
     </script>
