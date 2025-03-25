@@ -1,11 +1,7 @@
-use std::{cell::RefCell, fs, path::Path, rc::Rc};
-use parser::parse_html_to_vdom;
-use mlua::{Lua, Result};
-use scripting::{load_lua_scripts, register_lua_api, trigger_onload};
 
-mod vdom;
-mod scripting;
-mod parser;
+use std::{cell::RefCell, fs, path::Path, rc::Rc};
+use micast_dynamite::{load_lua_scripts, parse_html_to_vdom, register_lua_api, trigger_onload};
+use mlua::{Lua, Result};
 
 fn main() -> Result<()> {
     env_logger::init();
