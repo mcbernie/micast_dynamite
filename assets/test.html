@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rust vDOM Test</title>
+    <style>
+        #box {
+            width: 100px;
+            height: 100px;
+            background-color: blue;
+            text-align: center;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="box" onclick="change_size">
+        Klicke mich!
+    </div>
+
+    <script type="text/lua">
+        function change_size(element)
+            element:set_style("width", "200px")
+            element:set_style("height", "200px")
+            element:set_style("background-color", "red")
+        end
+    </script>
+
+</body>
+</html>
+
+<template id="weather_card">
+    <div class="card" for-each="weather_data">
+        <h2>{{ city }}</h2>
+        <p>{{ temp }}°C</p>
+    </div>
+</template>

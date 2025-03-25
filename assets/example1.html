@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>vDOM Test</title>
+    <style>
+        .card {
+            width: 200px;
+            padding: 10px;
+            margin: 5px;
+            background-color: lightblue;
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+<body onload="load_data">
+    
+    <!-- 🌱 Template für Wetter-Karten -->
+    <template id="weather_card">
+
+
+         
+        <div>
+            <div class="card">
+                <h2>{{ city }}</h2>
+                <p>Temperatur: {{ temp }}°C</p>
+            </div>
+
+        </div>
+
+
+
+
+    </template>
+
+    <!-- 🌱 Container für generierte Inhalte -->
+    <div id="weather_list"></div>
+
+    <!-- 🌍 Lua-Skript -->
+    <script type="text/lua">
+        function load_data()
+            -- 🌍 Daten abrufen (simulierte API-Anfrage)
+            local json = '[{"city": "Berlin", "temp": 21}, {"city": "Hamburg", "temp": 18}, {"city": "München", "temp": 24}]'
+            local weather_data = parse_json(json)
+
+            -- 🌱 Für jedes Wetter-Daten-Objekt eine Karte erstellen
+            for _, entry in ipairs(weather_data) do
+                local card = create_element("weather_card") -- 🎨 Template klonen
+                card:set_text("city", entry.city)
+                card:set_text("temp", tostring(entry.temp))
+                add_element("weather_list", card) -- ➕ In den Container einfügen
+            end
+        end
+    </script>
+
+</body>
+</html>
