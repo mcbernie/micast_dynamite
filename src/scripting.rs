@@ -1,41 +1,45 @@
-use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
-
-use log::{info, warn};
-use mlua::{AnyUserData, Lua, Result, UserData, UserDataMethods, Value};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use log::warn;
+use mlua::{AnyUserData, Lua, Result, UserDataMethods, Value};
 use regex::Regex;
 use reqwest::blocking::get;
-use scraper::{Html, Selector};
 use serde_json::Value as JsonValue;
 use ulid::Ulid;
 
-use crate::vdom::{VDom, VNode};
+use crate::{document::{self, FindByIdMut}, new_vdom::{self, ElementNode, TextNode, VNode}, render};
 
 #[derive(Clone)]
 pub struct ElementContext {
     pub internal_id: Ulid,
+    pub temp_node: Rc<RefCell<Option<VNode>>>,
     pub values: Rc<RefCell<HashMap<String, String>>>,
 }
-
-
-#[derive(Clone)]
-pub struct VDomContext(pub Rc<RefCell<VDom>>);
-
-impl mlua::UserData for VDomContext {}
-
-
 
 impl mlua::UserData for ElementContext {
     fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("set_text", |lua, this, (key, value): (String, String)| {
-            this.values.borrow_mut().insert(key.clone(), value);
-
             let globals = lua.globals();
-            let vdom_ud: mlua::AnyUserData = globals.get("_vdom")?;
-            let vdom_context = vdom_ud.borrow::<VDomContext>()?;
-            let vdom = vdom_context.0.clone();
+            this.values.borrow_mut().insert(key.clone(), value.clone());
 
-            if let Some(node) = vdom.borrow().get_element_by_internal_id(&this.internal_id) {
-                render_texts_in_subtree(&node, &this.values.borrow())?;
+            let has_node = {
+                let temp_node = this.temp_node.borrow();
+                temp_node.is_some()
+            };
+
+            if has_node {
+                let mut temp_node = this.temp_node.borrow_mut();
+                let mut taked_node = temp_node.take().unwrap();
+                render_texts_in_subtree(&mut taked_node, &this.values.borrow());
+                *temp_node = Some(taked_node);
+            } else {
+                let vdom_ud: mlua::AnyUserData = globals.get("_vdom")?;
+                let vdom_context = vdom_ud.borrow::<DynamiteContext>()?;
+                let vdom = vdom_context.0.clone();
+                let mut borrowed_vdom = vdom.borrow_mut();
+
+                if let Some(node) = borrowed_vdom.root.find_by_internal_id_mut(&this.internal_id) {
+                    render_texts_in_subtree(node, &this.values.borrow());
+                }
             }
 
             Ok(())
@@ -44,44 +48,27 @@ impl mlua::UserData for ElementContext {
     }
 }
 
-//impl UserData for VNode {
-//    fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
-//        methods.add_method_mut("set_style", |_, this, (key, value): (String, String)| {
-//            if let VNode::Element { styles, is_dirty, .. } = this {
-//                styles.insert(key, value);
-//                *is_dirty = true; // Rendering notwendig
-//            }
-//            Ok(())
-//        });
-//    }
-//}
-
 fn render_texts_in_subtree(
-    node: &Rc<RefCell<VNode>>,
+    node: &mut new_vdom::VNode,
     ctx: &HashMap<String, String>,
-) -> Result<()> {
+) {
     let re = Regex::new(r"\{\{\s*(\w+)\s*\}\}").unwrap();
 
-    match &mut *node.borrow_mut() {
-        VNode::Text { template, rendered, is_dirty, .. } => {
+    match node {
+        VNode::Text(TextNode { template, rendered, .. }) => {
             let replaced = re.replace_all(template, |caps: &regex::Captures| {
                 let key = &caps[1];
                 ctx.get(key).cloned().unwrap_or_default()
             });
-
             *rendered = replaced.into_owned();
-            *is_dirty = true;
         }
-        VNode::Element { children, .. } => {
-            for child in children {
-                render_texts_in_subtree(child, ctx)?;
+        VNode::Element(ElementNode { children, .. }) => {
+            for child in children.iter_mut() {
+                render_texts_in_subtree(child, ctx);
             }
         }
     }
-
-    Ok(())
 }
-
 
 fn get_webdata(_lua: &Lua, url: String) -> Result<String> {
     let response = get(&url).and_then(|resp| resp.text()).unwrap_or_else(|_| "{}".to_string());
@@ -90,7 +77,7 @@ fn get_webdata(_lua: &Lua, url: String) -> Result<String> {
 
 /// Erzeugt ein Element aus einer Vorlage und gibt ein leichtes Handle (ElementContext) zurück.
 /// Dabei wird eine ULID generiert, die als ID im VDOM verwendet wird.
-fn create_element(lua: &Lua, vdom: Rc<RefCell<VDom>>, template_id: String, parent_id: String) -> Result<mlua::Value> {
+fn create_element(lua: &Lua, vdom: Rc<RefCell<document::VDom>>, template_id: String) -> Result<mlua::Value> {
     log::info!("create_element: {}", template_id);
     let e = {
         let vdom_ref = vdom.borrow();
@@ -99,107 +86,18 @@ fn create_element(lua: &Lua, vdom: Rc<RefCell<VDom>>, template_id: String, paren
         a
     };
     if let Some(element) = e {
-
-
-        let id = {
-            element.borrow().get_internal_id().clone()
-        };
-
-        {
-            let mut vdom = vdom.borrow_mut();
-            vdom.add_element(&parent_id, element)
-                .map_err(|e| mlua::Error::external(format!("add_element failed: {}", e)))?;
-        }
-        // Registriere das Element intern im VDOM (z. B. in einer HashMap)
-        //vdom_mut.register_element(id.clone(), Rc::clone(&element));
-        
         // Gib ein leichtes Handle (ElementContext) an Lua zurück.
         let handle = lua.create_userdata(ElementContext{
-            internal_id: id,
+            internal_id: Ulid::new(),
+            temp_node: Rc::new(RefCell::new(Some(element))),
             values: Rc::new(RefCell::new(HashMap::new())),
         })?;
+
         Ok(mlua::Value::UserData(handle))
     } else {
         Ok(mlua::Value::Nil)
     }
 }
-
-pub fn register_lua_api(lua: &Lua, vdom: Rc<RefCell<VDom>>) -> Result<()> {
-    let globals = lua.globals();
-
-    globals.set("_vdom", lua.create_userdata(VDomContext(vdom.clone()))?)?;
-
-    let cloned_vdom = vdom.clone();
-    globals.set("create_element", lua.create_function(move |lua, (id, parent_id) : (String, String)| {
-        create_element(lua, cloned_vdom.clone(), id, parent_id)
-    })?)?;
-    //globals.set("set_text", lua.create_function(set_text)?)?;
-    globals.set("get_webdata", lua.create_function(get_webdata)?)?;
-    globals.set("parse_json", lua.create_function(parse_json)?)?;
-
-    let cloned_vdom = vdom.clone();
-    globals.set("get_element_by_id", lua.create_function_mut(move |lua, id: String| {
-        let vdom = cloned_vdom.clone();
-        let e = {
-            let vdom = vdom.borrow();
-            vdom.get_element_by_id(&id)
-        };
-
-        if let Some(element) = e {
-            let id = element.borrow().get_internal_id().clone();
-            let handle = lua.create_userdata(ElementContext{
-                internal_id: id,
-                values: Rc::new(RefCell::new(HashMap::new())),
-            })?;
-            Ok(mlua::Value::UserData(handle))
-        } else {
-            Ok(mlua::Value::Nil)
-        }
-        
-    })?)?;
-
-    let cloned_vdom = vdom.clone();
-    // 📌 add_element(target_id, child_node_userdata)
-    let add_element_func = lua.create_function(move |_, (target_id, node_ud): (String, AnyUserData)| {
-        let cloned_vdom = cloned_vdom.clone();
-        // Hole zuerst den VNodeHandle und klone das Rc, um das Element zu extrahieren.
-        let node = node_ud.borrow::<ElementContext>()?;
-
-        let element_rc = {
-            let vdom = cloned_vdom.borrow();
-
-            info!("get element for add_element: {}", node.internal_id);
-            vdom.get_element_by_internal_id(&node.internal_id)
-                .ok_or(mlua::Error::external("Element not found"))?
-                .clone()
-        };
-
-        {
-            // Nun sollte kein anderer Borrow mehr aktiv sein.
-            let mut vdom = cloned_vdom.borrow_mut();
-            vdom.add_element(&target_id, element_rc)
-                .map_err(|e| mlua::Error::external(format!("add_element failed: {}", e)))?;
-        }
-        Ok(())
-    })?;
-    
-    globals.set("add_element", add_element_func)?;
-
-    Ok(())
-}
-
-pub fn load_lua_scripts(lua: &Lua, html: &str) -> Result<()> {
-    let document = Html::parse_document(html);
-    let script_selector = Selector::parse("script").unwrap();
-
-    for script in document.select(&script_selector) {
-        if let Some(script_content) = script.text().next() {
-            lua.load(script_content).exec()?;
-        }
-    }
-    Ok(())
-}
-
 
 fn json_to_lua(lua: &Lua, json: &JsonValue) -> Result<Value> {
     match json {
@@ -229,24 +127,157 @@ fn parse_json(lua: &Lua, json_str: String) -> Result<Value> {
     json_to_lua(lua, &parsed)
 }
 
-pub fn trigger_onload(lua: &Lua, vdom: &Rc<RefCell<VDom>>) -> Result<()> {
-    let root = {
-        vdom.borrow().root.clone()
-    };
 
-    let attributes = {
-        let element = root.borrow();
-        if let VNode::Element { attributes, .. } = &*element {
-            Some(attributes.clone())
-        } else {
-            None
-        }
-    };
 
-    if let Some(attributes) = attributes {
-        if let Some(onload) = attributes.get("onload") {
-            lua.load(format!("{}()", onload)).exec()?; // ✅ Lua-Funktion ausführen
+
+struct DynamiteContext(Rc<RefCell<document::VDom>>);
+impl mlua::UserData for DynamiteContext {}
+
+pub struct Engine {
+    pub lua: Lua,
+    pub onupdate_fns: Vec<mlua::Function>,
+    pub onload_fns: Vec<mlua::Function>,
+}
+
+impl Engine {
+
+    pub fn new() -> Self {
+        let lua = Lua::new();
+        Self::load_lua_api(&lua).unwrap();
+        Self {
+            lua,
+            onupdate_fns: Vec::new(),
+            onload_fns: Vec::new(),
         }
     }
-    Ok(())
+
+    pub fn load_scripts(&mut self, scripts: Vec<String>) -> Result<()> {
+        for script in scripts {
+            self.lua.load(script).exec()?;
+        }
+        Ok(())
+    }
+
+    fn load_lua_api(lua: &mlua::Lua) -> Result<()> {
+        let globals = lua.globals();
+        globals.set("create_element", lua.create_function(move |lua, id: String| {
+            let globals = lua.globals();
+            let vdom_ud: mlua::AnyUserData = globals.get("_vdom")?;
+            let vdom_context = vdom_ud.borrow::<DynamiteContext>()?;
+            let vdom = vdom_context.0.clone();
+            create_element(lua, vdom, id)
+        })?)?;
+        //globals.set("set_text", lua.create_function(set_text)?)?;
+        globals.set("get_webdata", lua.create_function(get_webdata)?)?;
+        globals.set("parse_json", lua.create_function(parse_json)?)?;
+
+        globals.set("get_element_by_id", lua.create_function_mut(move |lua, id: String| {
+            let globals = lua.globals();
+            let vdom_ud: mlua::AnyUserData = globals.get("_vdom")?;
+            let vdom_context = vdom_ud.borrow::<DynamiteContext>()?;
+            let vdom = vdom_context.0.clone();
+            let borrow_vdom = vdom.borrow();
+            let e = borrow_vdom.find_element_by_id(&id);
+
+            if let Some(element) = e {
+                let id = element.get_internal_id().clone();
+                let handle = lua.create_userdata(ElementContext{
+                    internal_id: id,
+                    temp_node: Rc::new(RefCell::new(None)),
+                    values: Rc::new(RefCell::new(HashMap::new())),
+                })?;
+                Ok(mlua::Value::UserData(handle))
+            } else {
+                Ok(mlua::Value::Nil)
+            }
+            
+        })?)?;
+
+        let add_element_func = lua.create_function(move |lua, (target_id, node_ud): (String, AnyUserData)| {
+            let globals = lua.globals();
+            let vdom_ud: mlua::AnyUserData = globals.get("_vdom")?;
+            let vdom_context = vdom_ud.borrow::<DynamiteContext>()?;
+            let vdom = vdom_context.0.clone();
+            // Hole zuerst den VNodeHandle und klone das Rc, um das Element zu extrahieren.
+            let node = node_ud.borrow_mut::<ElementContext>()?;
+
+            if let Some(temp_node) = node.temp_node.take() {
+                let mut vdom = vdom.borrow_mut();
+                vdom.add_element(&target_id, temp_node)
+                    .map_err(|e| mlua::Error::external(format!("add_element failed: {}", e)))?;
+            } else {
+                warn!("temp_node is None");
+            }
+            Ok(())
+        })?;
+        
+        globals.set("add_element", add_element_func)?;
+        Ok(())
+    }
+
+    pub fn begin(&self, vdom: &document::VDom) -> Result<()> {
+        let l = vdom.clone();
+        let globals = self.lua.globals();
+        globals.set("_vdom", 
+           self.lua.create_userdata(
+                DynamiteContext(Rc::new(RefCell::new(l)))
+            )?
+        )?;
+
+        Ok(())
+    }
+
+    pub fn commit(&self) -> Result<new_vdom::VNode> {
+        let globals = self.lua.globals();
+        let dyn_userdata: mlua::AnyUserData = globals.get("_vdom")?;
+        let tmp_ctx = dyn_userdata.borrow::<DynamiteContext>()?;
+        let tmp = tmp_ctx.0.borrow().clone();
+
+        // und jetzt...
+        Ok(tmp.root)
+    }
+
+    pub fn search_onupdate_functions(&mut self, vdom: &document::VDom) -> std::result::Result<(), String> {
+        let mut onupdate_fns = Vec::new();
+        let mut onload_fns  = Vec::new();
+        let root = &vdom.root;
+
+        let mut search_in_node = |node: &new_vdom::VNode| {
+            if let new_vdom::VNode::Element( ElementNode { attrs, .. }) = node {
+                if let Some(onupdate) = attrs.get("onupdate") {
+                    let onupdate_fn = self.lua.load(format!("{}()", onupdate)).into_function().unwrap();
+                    onupdate_fns.push(onupdate_fn);
+                }
+                if let Some(onload) = attrs.get("onload") {
+                    warn!("found onload: {}", onload);
+                    let onload_fn = self.lua.load(format!("{}()", onload)).into_function().unwrap();
+                    onload_fns.push(onload_fn);
+                }
+            }
+        };
+
+        search_in_node(root);
+
+        self.onupdate_fns = onupdate_fns;
+        self.onload_fns = onload_fns;
+        Ok(())
+    }
+
+    pub fn call_onupdates(&self) -> std::result::Result<(), String> {
+        for onupdate_fn in &self.onupdate_fns {
+            warn!("onupdate_fn: {:?}", onupdate_fn);
+            onupdate_fn.call::<()>(()).map_err(|e| format!("onupdate failed: {}", e))?;
+        }
+        Ok(())
+    }
+
+    pub fn call_onload(&self) -> std::result::Result<(), String> {
+        for onload_fn in &self.onload_fns {
+            warn!("onload_fn: {:?}", onload_fn);
+            onload_fn.call::<()>(()).map_err(|e| format!("onload failed: {}", e))?;
+        }
+        Ok(())
+    }
+
+
 }

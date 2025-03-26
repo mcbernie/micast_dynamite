@@ -1,10 +1,10 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
-use log::info;
+use im::Vector;
 use scraper::{ElementRef, Html, Node, Selector};
 use ulid::Ulid;
 
-use crate::vdom::{VDom, VNode};
+use crate::{document::VDom, new_vdom::{ElementNode, TextNode, VNode}};
 
 
 pub fn parse_element(element: &ElementRef) -> VNode {
@@ -23,10 +23,10 @@ fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bo
     }
 
     let id = element.value().attr("id").map(|s| s.to_string());
-    let template = element.value().attr("template").map(|s| s.to_string());
-    let for_each = element.value().attr("for-each").map(|s| s.to_string());
+    //let template = element.value().attr("template").map(|s| s.to_string());
+    //let for_each = element.value().attr("for-each").map(|s| s.to_string());
 
-    let mut attributes = HashMap::new();
+    let mut attrs = HashMap::new();
     let mut styles = HashMap::new();
 
     for attr in element.value().attrs() {
@@ -35,7 +35,7 @@ fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bo
         if key == "style" {
             styles = parse_styles(&value);
         } else {
-            attributes.insert(key, value);
+            attrs.insert(key, value);
         }
     }
 
@@ -48,6 +48,9 @@ fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bo
                     if el.name() == "template" {
                         return None; // ❌ template ignorieren
                     }
+                    if el.name() == "script" {
+                        return None; // ❌ script ignorieren
+                    }
                 }
             }
             match child.value() {
@@ -55,34 +58,30 @@ fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bo
                     if text.trim().is_empty() {
                         None
                     } else {
-                        Some(Ok(Rc::new(RefCell::new(VNode::Text {
+                        Some(Ok(VNode::Text(TextNode{
                             internal_id: Ulid::new(),
+                            id: None,
                             template: text.trim().to_string(),
                             rendered: String::new(),
-                            is_dirty: true,
-                        }))))
+                        })))
                     }
                 },
                 scraper::Node::Element(_) => {
                     let el = ElementRef::wrap(child).unwrap();
-                    Some(parse_element_internal(&el, inside_template, false, ignore_templates).map(|n| Rc::new(RefCell::new(n))))
+                    Some(parse_element_internal(&el, inside_template, false, ignore_templates).map(|n| n))
                 }
                 _ => None,
             }
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vector<_>, _>>()?;
 
-    Ok(VNode::Element {
+    Ok(VNode::Element( ElementNode {
         internal_id: Ulid::new(),
         id,
         tag,
-        attributes,
-        styles,
+        attrs,
         children,
-        is_dirty: true,
-        template,
-        for_each,
-    })
+    }))
 }
 
 pub fn parse_html_to_vdom(html: &str) -> Result<VDom, String> {
@@ -91,26 +90,23 @@ pub fn parse_html_to_vdom(html: &str) -> Result<VDom, String> {
     let body_selector = Selector::parse("body").unwrap();
 
     let mut templates = HashMap::new();
-    let mut id_index = HashMap::new();
     let mut id_map = HashMap::new();
 
     fn index_node(
-        node: &Rc<RefCell<VNode>>,
-        id_index: &mut HashMap<Ulid, Rc<RefCell<VNode>>>,
+        node: &VNode,
         id_map: &mut HashMap<String, Ulid>,
     ) {
-        match &*node.borrow() {
-            VNode::Element { internal_id, id, children, .. } => {
-                id_index.insert(*internal_id, Rc::clone(node));
+        match node {
+            VNode::Element(ElementNode { internal_id, id, children, .. }) => {
                 if let Some(html_id) = id {
                     id_map.insert(html_id.clone(), *internal_id);
                 }
                 for child in children {
-                    index_node(child, id_index, id_map);
+                    index_node(child, id_map);
                 }
             }
-            VNode::Text { internal_id, .. } => {
-                id_index.insert(*internal_id, Rc::clone(node));
+            VNode::Text( TextNode { internal_id, .. }) => {
+                //id_map.insert(*internal_id, Rc::clone(node));
             }
         }
     }
@@ -141,19 +137,18 @@ pub fn parse_html_to_vdom(html: &str) -> Result<VDom, String> {
         }
 
         let vnode = parse_templates(&main_child);
-        templates.insert(id, Rc::new(RefCell::new(vnode)));
+        templates.insert(id, vnode);
     }
 
     let body = document.select(&body_selector).next().ok_or("<body> not found")?;
 
-    let root = Rc::new(RefCell::new(parse_element(&body)));
+    let root = parse_element(&body);
 
-    index_node(&root, &mut id_index, &mut id_map);
+    index_node(&root, &mut id_map);
 
 
     Ok(VDom {
         root,
-        id_index,
         id_map,
         templates,
     })
@@ -169,4 +164,18 @@ fn parse_styles(style_str: &str) -> HashMap<String, String> {
         }
     }
     styles
+}
+
+pub fn load_lua_scripts(html: &str) -> Result<Vec<String>, String> {
+    let document = Html::parse_document(html);
+    let script_selector = Selector::parse("script").unwrap();
+
+    let mut scripts = Vec::new();
+    for script in document.select(&script_selector) {
+        if let Some(script_content) = script.text().next() {
+            //lua.load(script_content).exec()?;
+            scripts.push(script_content.to_string());
+        }
+    }
+    Ok(scripts)
 }

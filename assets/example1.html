@@ -13,7 +13,7 @@
         }
     </style>
 </head>
-<body onload="load_data">
+<body onload="load_data" onupdate="update_data">
     
     <!-- 🌱 Template für Wetter-Karten -->
     <template id="weather_card">
@@ -28,6 +28,16 @@
 
     <!-- 🌍 Lua-Skript -->
     <script type="text/lua">
+        counter = 0
+
+        function update_data()
+            counter = counter + 1
+            local second_card = create_element("weather_card")
+            second_card:set_text("city", "Kackhausen")
+            second_card:set_text("temp", tostring(counter))
+            add_element("weather_list", second_card)
+        end
+
         function load_data()
             -- 🌍 Daten abrufen (simulierte API-Anfrage)
             local json = '[{"city": "Berlin", "temp": 21}, {"city": "Hamburg", "temp": 18}, {"city": "München", "temp": 24}]'
@@ -35,9 +45,10 @@
 
             -- 🌱 Für jedes Wetter-Daten-Objekt eine Karte erstellen
             for _, entry in ipairs(weather_data) do
-                local card = create_element("weather_card", "weather_list") -- 🎨 Template klonen
+                local card = create_element("weather_card") -- 🎨 Template klonen
                 card:set_text("city", entry.city)
                 card:set_text("temp", tostring(entry.temp))
+                add_element("weather_list", card) -- 🌱 Karte in Container einfügen
             end
         end
     </script>

@@ -1,22 +1,10 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
-
-use crate::vdom::{VDom, VNode};
-
-#[derive(Debug)]
-pub enum RenderNode {
-    Element {
-        tag: String,
-        styles: HashMap<String, String>,
-        children: Vec<RenderNode>,
-    },
-    Text(String),
-}
+use crate::new_vdom::DiffOp;
 
 pub trait Renderer {
-    fn render(&mut self, node: &RenderNode);
+    fn render(&mut self, node: &DiffOp);
 }
 
-
+/* 
 impl VDom {
     pub fn render_snapshot(&self) -> RenderNode {
         Self::collect_render_data(&self.root)
@@ -40,3 +28,4 @@ impl VDom {
         }
     }
 }
+*/

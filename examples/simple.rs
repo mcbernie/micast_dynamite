@@ -1,32 +1,33 @@
 
-use std::{cell::RefCell, fs, path::Path, rc::Rc};
-use micast_dynamite::{load_lua_scripts, parse_html_to_vdom, register_lua_api, trigger_onload};
-use mlua::{Lua, Result};
+use std::{fs, path::Path};
+use micast_dynamite::Dynamite;
 
-fn main() -> Result<()> {
+pub struct Renderer;
+
+impl micast_dynamite::Renderer for Renderer {
+    fn render(&mut self, node: &micast_dynamite::DiffOp) {
+        println!("-> {:#?}", node);
+    }
+}
+
+fn main() -> Result<(), String> {
     env_logger::init();
 
     // 1. Lade `test.html` aus `assets/`
     let path = Path::new("assets/example1.html");
     let html = fs::read_to_string(path).expect("Konnte test.html nicht laden");
 
-    // 2. vDOM aus HTML erzeugen
-    let vdom = parse_html_to_vdom(&html).unwrap();
-    let vdom = Rc::new(RefCell::new(vdom));
+    let r = Renderer;
+
+    let mut d = Dynamite::new(&html, r)?;
+
+    d.run_frame()?;
+    d.run_frame()?;
+    d.run_frame()?;
+    d.run_frame()?;
+    d.run_frame()?;
 
 
-    // 3. Lua-Interpreter initialisieren
-    let lua = Lua::new();
-
-    // 4. Lua-API registrieren
-    register_lua_api(&lua, Rc::clone(&vdom))?;
-
-    // 5. Lade Lua-Skripte aus `<script>`-Tags
-    load_lua_scripts(&lua, &html)?;
-
-    trigger_onload(&lua, &vdom)?;
-    // 7. Zeige den geänderten vDOM
-    println!("{:#?}", vdom.borrow().root);
 
     Ok(())
 }
