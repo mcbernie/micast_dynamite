@@ -1,4 +1,4 @@
-use crate::new_vdom::DiffOp;
+use crate::vdom::DiffOp;
 
 pub trait Renderer {
     fn render(&mut self, node: &DiffOp);

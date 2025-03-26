@@ -1,19 +1,17 @@
 mod document;
 mod vdom;
-mod new_vdom;
 mod scripting;
 mod parser;
 mod render;
 
 use log::warn;
-use new_vdom::diff_vnode;
+use vdom::diff_vnode;
 use parser::load_lua_scripts;
 use scripting::Engine;
-pub use vdom::{VDom, VNode};
 pub use parser::parse_html_to_vdom;
 pub use render::Renderer;
 
-pub use new_vdom::DiffOp;
+pub use vdom::DiffOp;
 
 pub struct Dynamite<R: Renderer> {
     vdom: document::VDom,
@@ -55,12 +53,12 @@ impl<R: Renderer> Dynamite<R> {
             self.engine.call_onupdates()?;
         }
 
-        let new_vdom = self.engine.commit().unwrap();
+        let vdom = self.engine.commit().unwrap();
 
-        let patch = diff_vnode(&old_vdom, &new_vdom);
+        let patch = diff_vnode(&old_vdom, &vdom);
 
         warn!("old_vdom: {:?}", old_vdom);
-        warn!("new_vdom: {:?}", new_vdom);
+        warn!("vdom: {:?}", vdom);
 
         if let Some(patch) = patch {
             self.renderer.render(&patch);

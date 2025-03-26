@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ulid::Ulid;
 
-use crate::{new_vdom::VNode, parse_html_to_vdom};
+use crate::{vdom::VNode, parse_html_to_vdom};
 
 
 

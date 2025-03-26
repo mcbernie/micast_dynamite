@@ -6,7 +6,7 @@ use reqwest::blocking::get;
 use serde_json::Value as JsonValue;
 use ulid::Ulid;
 
-use crate::{document::{self, FindByIdMut}, new_vdom::{self, ElementNode, TextNode, VNode}, render};
+use crate::{document::{self, FindByIdMut}, vdom::{self, ElementNode, TextNode, VNode}, render};
 
 #[derive(Clone)]
 pub struct ElementContext {
@@ -49,7 +49,7 @@ impl mlua::UserData for ElementContext {
 }
 
 fn render_texts_in_subtree(
-    node: &mut new_vdom::VNode,
+    node: &mut vdom::VNode,
     ctx: &HashMap<String, String>,
 ) {
     let re = Regex::new(r"\{\{\s*(\w+)\s*\}\}").unwrap();
@@ -227,7 +227,7 @@ impl Engine {
         Ok(())
     }
 
-    pub fn commit(&self) -> Result<new_vdom::VNode> {
+    pub fn commit(&self) -> Result<vdom::VNode> {
         let globals = self.lua.globals();
         let dyn_userdata: mlua::AnyUserData = globals.get("_vdom")?;
         let tmp_ctx = dyn_userdata.borrow::<DynamiteContext>()?;
@@ -242,8 +242,8 @@ impl Engine {
         let mut onload_fns  = Vec::new();
         let root = &vdom.root;
 
-        let mut search_in_node = |node: &new_vdom::VNode| {
-            if let new_vdom::VNode::Element( ElementNode { attrs, .. }) = node {
+        let mut search_in_node = |node: &vdom::VNode| {
+            if let vdom::VNode::Element( ElementNode { attrs, .. }) = node {
                 if let Some(onupdate) = attrs.get("onupdate") {
                     let onupdate_fn = self.lua.load(format!("{}()", onupdate)).into_function().unwrap();
                     onupdate_fns.push(onupdate_fn);

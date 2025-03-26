@@ -4,7 +4,7 @@ use im::Vector;
 use scraper::{ElementRef, Html, Node, Selector};
 use ulid::Ulid;
 
-use crate::{document::VDom, new_vdom::{ElementNode, TextNode, VNode}};
+use crate::{document::VDom, vdom::{ElementNode, TextNode, VNode}};
 
 
 pub fn parse_element(element: &ElementRef) -> VNode {
