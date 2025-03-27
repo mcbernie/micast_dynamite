@@ -205,8 +205,6 @@ impl Engine {
                 let mut vdom = vdom.borrow_mut();
                 vdom.add_element(&target_id, temp_node)
                     .map_err(|e| mlua::Error::external(format!("add_element failed: {}", e)))?;
-            } else {
-                warn!("temp_node is None");
             }
             Ok(())
         })?;
@@ -249,7 +247,6 @@ impl Engine {
                     onupdate_fns.push(onupdate_fn);
                 }
                 if let Some(onload) = attrs.get("onload") {
-                    warn!("found onload: {}", onload);
                     let onload_fn = self.lua.load(format!("{}()", onload)).into_function().unwrap();
                     onload_fns.push(onload_fn);
                 }

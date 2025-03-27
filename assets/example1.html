@@ -15,16 +15,14 @@
 </head>
 <body onload="load_data" onupdate="update_data">
     
-    <!-- 🌱 Template für Wetter-Karten -->
     <template id="weather_card">
-        <div id="fu" class="mard">
-            <h2>{{ city }}</h2>
+        <div id="fu" class="mard" style="background-color: #44ff00ff; align: center; flex-direction: column; margin-bottom: 80px;">
+            <h2 style="background-color: #770000FF;font-size: 38;padding-left: 40px;">{{ city }}</h2>
             <p>Temperatur: {{ temp }}°C</p>
         </div>
     </template>
 
-    <!-- 🌱 Container für generierte Inhalte -->
-    <div id="weather_list"></div>
+    <div id="weather_list" style="width: 100%; height: 100%; align: center;padding-top: 40px;background-color: #223366ff;"></div>
 
     <!-- 🌍 Lua-Skript -->
     <script type="text/lua">

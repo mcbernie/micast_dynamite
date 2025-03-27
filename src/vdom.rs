@@ -23,19 +23,10 @@ pub struct ElementNode {
 pub struct TextNode {
     pub internal_id: Ulid,
     pub id: Option<String>,
+    pub attrs: HashMap<String, String>,
     pub template: String,
     pub rendered: String,
 
-}
-
-#[derive(Debug, Clone)]
-pub struct LayoutBox {
-    pub node: VNode,
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-    pub children: Vec<LayoutBox>,
 }
 
 #[derive(Debug)]

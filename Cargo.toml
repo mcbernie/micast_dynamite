@@ -13,3 +13,7 @@ reqwest = { version = "0.12.15", features = ["blocking"] }
 scraper = "0.23.1"
 serde_json = "1.0.140"
 ulid = "1.2.1"
+
+[dev-dependencies]
+gl_render = { git = "https://gitlab.com/micast/rust-gl_render.git", branch = "wasm", default-features = false }
+femtovg = "0.14.0"

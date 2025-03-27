@@ -27,13 +27,14 @@ fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bo
     //let for_each = element.value().attr("for-each").map(|s| s.to_string());
 
     let mut attrs = HashMap::new();
-    let mut styles = HashMap::new();
+    //let mut styles = HashMap::new();
 
     for attr in element.value().attrs() {
         let key = attr.0.to_string();
         let value = attr.1.to_string();
         if key == "style" {
-            styles = parse_styles(&value);
+            let a = parse_styles(&value);
+            a.into_iter().for_each(|(k, v)| {attrs.insert(k, v);});
         } else {
             attrs.insert(key, value);
         }
@@ -61,6 +62,7 @@ fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bo
                         Some(Ok(VNode::Text(TextNode{
                             internal_id: Ulid::new(),
                             id: None,
+                            attrs: attrs.clone(),
                             template: text.trim().to_string(),
                             rendered: String::new(),
                         })))
@@ -178,4 +180,27 @@ pub fn load_lua_scripts(html: &str) -> Result<Vec<String>, String> {
         }
     }
     Ok(scripts)
+}
+
+pub fn parse_color(input: &str) -> Option<[u8; 4]> {
+    let hex = input.strip_prefix('#')?;
+
+    match hex.len() {
+        6 => {
+            // Format: RRGGBB
+            let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+            let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+            let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+            Some([r, g, b, 255])
+        }
+        8 => {
+            // Format: RRGGBBAA
+            let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+            let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+            let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+            let a = u8::from_str_radix(&hex[6..8], 16).ok()?;
+            Some([r, g, b, a])
+        }
+        _ => None,
+    }
 }
