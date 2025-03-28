@@ -2,28 +2,30 @@ use im::Vector;
 use ulid::Ulid;
 use std::collections::HashMap;
 
-use crate::document::{FindBy, FindByIdMut};
+use crate::{document::{FindBy, FindByIdMut}, styles::Style};
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum VNode {
     Element(ElementNode),
     Text(TextNode),
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct ElementNode {
     pub internal_id: Ulid,
     pub id: Option<String>,
     pub tag: String,
     pub attrs: HashMap<String, String>,
+    pub style: Style,
     pub children: Vector<VNode>,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct TextNode {
     pub internal_id: Ulid,
     pub id: Option<String>,
     pub attrs: HashMap<String, String>,
+    pub style: Style,
     pub template: String,
     pub rendered: String,
 
@@ -135,6 +137,7 @@ pub fn apply_patch(node: &VNode, op: &DiffOp) -> VNode {
                     id: elem.id.clone(),
                     tag: tag.clone(),
                     attrs: new_attrs,
+                    style: elem.style.clone(),
                     children: elem.children.clone(),
                 })
             } else {
@@ -150,6 +153,7 @@ pub fn apply_patch(node: &VNode, op: &DiffOp) -> VNode {
                     id: elem.id.clone(),
                     tag: elem.tag.clone(),
                     attrs: elem.attrs.clone(),
+                    style: elem.style.clone(),
                     children: new_children,
                 })
             } else {
@@ -165,6 +169,7 @@ pub fn apply_patch(node: &VNode, op: &DiffOp) -> VNode {
                     id: elem.id.clone(),
                     tag: elem.tag.clone(),
                     attrs: elem.attrs.clone(),
+                    style: elem.style.clone(),
                     children: new_children,
                 })
             } else {
@@ -183,6 +188,7 @@ pub fn apply_patch(node: &VNode, op: &DiffOp) -> VNode {
                     id: elem.id.clone(),
                     tag: elem.tag.clone(),
                     attrs: elem.attrs.clone(),
+                    style: elem.style.clone(),
                     children: new_children,
                 })
             } else {

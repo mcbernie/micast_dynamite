@@ -3,6 +3,8 @@ mod vdom;
 mod scripting;
 mod parser;
 mod render;
+pub mod layout;
+pub mod styles;
 
 use std::collections::HashMap;
 

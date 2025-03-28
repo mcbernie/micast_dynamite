@@ -35,224 +35,6 @@ LayoutBox {
                         "id": "weather_list",
                         "background-color": "#223366ff",
                     },
-                    children: [
-                        Element(
-                            ElementNode {
-                                internal_id: Ulid(
-                                    2107260295724613645671875502371230333,
-                                ),
-                                id: Some(
-                                    "fu",
-                                ),
-                                tag: "div",
-                                attrs: {
-                                    "background-color": "#44ff00ff",
-                                    "flex-direction": "column",
-                                    "class": "mard",
-                                    "align": "center",
-                                    "id": "fu",
-                                },
-                                children: [
-                                    Element(
-                                        ElementNode {
-                                            internal_id: Ulid(
-                                                2107260295724438728504009310959195853,
-                                            ),
-                                            id: None,
-                                            tag: "h2",
-                                            attrs: {
-                                                "background-color": "#770000FF",
-                                                "font-size": "38",
-                                            },
-                                            children: [
-                                                Text(
-                                                    TextNode {
-                                                        internal_id: Ulid(
-                                                            2107260295725154314113244518178541377,
-                                                        ),
-                                                        id: None,
-                                                        attrs: {
-                                                            "background-color": "#770000FF",
-                                                            "font-size": "38",
-                                                        },
-                                                        template: "{{ city }}",
-                                                        rendered: "Berlin",
-                                                    },
-                                                ),
-                                            ],
-                                        },
-                                    ),
-                                    Element(
-                                        ElementNode {
-                                            internal_id: Ulid(
-                                                2107260295725506241329259030181173877,
-                                            ),
-                                            id: None,
-                                            tag: "p",
-                                            attrs: {},
-                                            children: [
-                                                Text(
-                                                    TextNode {
-                                                        internal_id: Ulid(
-                                                            2107260295724996275235218522454031590,
-                                                        ),
-                                                        id: None,
-                                                        attrs: {},
-                                                        template: "Temperatur: {{ temp }}°C",
-                                                        rendered: "Temperatur: 21.0°C",
-                                                    },
-                                                ),
-                                            ],
-                                        },
-                                    ),
-                                ],
-                            },
-                        ),
-                        Element(
-                            ElementNode {
-                                internal_id: Ulid(
-                                    2107260295773277489668871066104523916,
-                                ),
-                                id: Some(
-                                    "fu",
-                                ),
-                                tag: "div",
-                                attrs: {
-                                    "background-color": "#44ff00ff",
-                                    "flex-direction": "column",
-                                    "class": "mard",
-                                    "align": "center",
-                                    "id": "fu",
-                                },
-                                children: [
-                                    Element(
-                                        ElementNode {
-                                            internal_id: Ulid(
-                                                2107260295773514711638387313826430157,
-                                            ),
-                                            id: None,
-                                            tag: "h2",
-                                            attrs: {
-                                                "background-color": "#770000FF",
-                                                "font-size": "38",
-                                            },
-                                            children: [
-                                                Text(
-                                                    TextNode {
-                                                        internal_id: Ulid(
-                                                            2107260295773319813208972507410037503,
-                                                        ),
-                                                        id: None,
-                                                        attrs: {
-                                                            "background-color": "#770000FF",
-                                                            "font-size": "38",
-                                                        },
-                                                        template: "{{ city }}",
-                                                        rendered: "Hamburg",
-                                                    },
-                                                ),
-                                            ],
-                                        },
-                                    ),
-                                    Element(
-                                        ElementNode {
-                                            internal_id: Ulid(
-                                                2107260295773468155291410260541817073,
-                                            ),
-                                            id: None,
-                                            tag: "p",
-                                            attrs: {},
-                                            children: [
-                                                Text(
-                                                    TextNode {
-                                                        internal_id: Ulid(
-                                                            2107260295772863255580787714977321232,
-                                                        ),
-                                                        id: None,
-                                                        attrs: {},
-                                                        template: "Temperatur: {{ temp }}°C",
-                                                        rendered: "Temperatur: 18.0°C",
-                                                    },
-                                                ),
-                                            ],
-                                        },
-                                    ),
-                                ],
-                            },
-                        ),
-                        Element(
-                            ElementNode {
-                                internal_id: Ulid(
-                                    2107260295804874897720726001829850645,
-                                ),
-                                id: Some(
-                                    "fu",
-                                ),
-                                tag: "div",
-                                attrs: {
-                                    "background-color": "#44ff00ff",
-                                    "flex-direction": "column",
-                                    "class": "mard",
-                                    "align": "center",
-                                    "id": "fu",
-                                },
-                                children: [
-                                    Element(
-                                        ElementNode {
-                                            internal_id: Ulid(
-                                                2107260295804878189397776204699195815,
-                                            ),
-                                            id: None,
-                                            tag: "h2",
-                                            attrs: {
-                                                "background-color": "#770000FF",
-                                                "font-size": "38",
-                                            },
-                                            children: [
-                                                Text(
-                                                    TextNode {
-                                                        internal_id: Ulid(
-                                                            2107260295804461091967054122250722066,
-                                                        ),
-                                                        id: None,
-                                                        attrs: {
-                                                            "background-color": "#770000FF",
-                                                            "font-size": "38",
-                                                        },
-                                                        template: "{{ city }}",
-                                                        rendered: "München",
-                                                    },
-                                                ),
-                                            ],
-                                        },
-                                    ),
-                                    Element(
-                                        ElementNode {
-                                            internal_id: Ulid(
-                                                2107260295804835786848683661308999911,
-                                            ),
-                                            id: None,
-                                            tag: "p",
-                                            attrs: {},
-                                            children: [
-                                                Text(
-                                                    TextNode {
-                                                        internal_id: Ulid(
-                                                            2107260295804932208074746270692719255,
-                                                        ),
-                                                        id: None,
-                                                        attrs: {},
-                                                        template: "Temperatur: {{ temp }}°C",
-                                                        rendered: "Temperatur: 24.0°C",
-                                                    },
-                                                ),
-                                            ],
-                                        },
-                                    ),
-                                ],
-                            },
-                        ),
-                    ],
                 },
             ),
             x: 0.0,
@@ -277,60 +59,6 @@ LayoutBox {
                                 "align": "center",
                                 "id": "fu",
                             },
-                            children: [
-                                Element(
-                                    ElementNode {
-                                        internal_id: Ulid(
-                                            2107260295724438728504009310959195853,
-                                        ),
-                                        id: None,
-                                        tag: "h2",
-                                        attrs: {
-                                            "background-color": "#770000FF",
-                                            "font-size": "38",
-                                        },
-                                        children: [
-                                            Text(
-                                                TextNode {
-                                                    internal_id: Ulid(
-                                                        2107260295725154314113244518178541377,
-                                                    ),
-                                                    id: None,
-                                                    attrs: {
-                                                        "background-color": "#770000FF",
-                                                        "font-size": "38",
-                                                    },
-                                                    template: "{{ city }}",
-                                                    rendered: "Berlin",
-                                                },
-                                            ),
-                                        ],
-                                    },
-                                ),
-                                Element(
-                                    ElementNode {
-                                        internal_id: Ulid(
-                                            2107260295725506241329259030181173877,
-                                        ),
-                                        id: None,
-                                        tag: "p",
-                                        attrs: {},
-                                        children: [
-                                            Text(
-                                                TextNode {
-                                                    internal_id: Ulid(
-                                                        2107260295724996275235218522454031590,
-                                                    ),
-                                                    id: None,
-                                                    attrs: {},
-                                                    template: "Temperatur: {{ temp }}°C",
-                                                    rendered: "Temperatur: 21.0°C",
-                                                },
-                                            ),
-                                        ],
-                                    },
-                                ),
-                            ],
                         },
                     ),
                     x: 362.0,
@@ -350,22 +78,7 @@ LayoutBox {
                                         "background-color": "#770000FF",
                                         "font-size": "38",
                                     },
-                                    children: [
-                                        Text(
-                                            TextNode {
-                                                internal_id: Ulid(
-                                                    2107260295725154314113244518178541377,
-                                                ),
-                                                id: None,
-                                                attrs: {
-                                                    "background-color": "#770000FF",
-                                                    "font-size": "38",
-                                                },
-                                                template: "{{ city }}",
-                                                rendered: "Berlin",
-                                            },
-                                        ),
-                                    ],
+                                    
                                 },
                             ),
                             x: 388.0,
@@ -405,19 +118,6 @@ LayoutBox {
                                     id: None,
                                     tag: "p",
                                     attrs: {},
-                                    children: [
-                                        Text(
-                                            TextNode {
-                                                internal_id: Ulid(
-                                                    2107260295724996275235218522454031590,
-                                                ),
-                                                id: None,
-                                                attrs: {},
-                                                template: "Temperatur: {{ temp }}°C",
-                                                rendered: "Temperatur: 21.0°C",
-                                            },
-                                        ),
-                                    ],
                                 },
                             ),
                             x: 362.0,
@@ -464,60 +164,7 @@ LayoutBox {
                                 "align": "center",
                                 "id": "fu",
                             },
-                            children: [
-                                Element(
-                                    ElementNode {
-                                        internal_id: Ulid(
-                                            2107260295773514711638387313826430157,
-                                        ),
-                                        id: None,
-                                        tag: "h2",
-                                        attrs: {
-                                            "background-color": "#770000FF",
-                                            "font-size": "38",
-                                        },
-                                        children: [
-                                            Text(
-                                                TextNode {
-                                                    internal_id: Ulid(
-                                                        2107260295773319813208972507410037503,
-                                                    ),
-                                                    id: None,
-                                                    attrs: {
-                                                        "background-color": "#770000FF",
-                                                        "font-size": "38",
-                                                    },
-                                                    template: "{{ city }}",
-                                                    rendered: "Hamburg",
-                                                },
-                                            ),
-                                        ],
-                                    },
-                                ),
-                                Element(
-                                    ElementNode {
-                                        internal_id: Ulid(
-                                            2107260295773468155291410260541817073,
-                                        ),
-                                        id: None,
-                                        tag: "p",
-                                        attrs: {},
-                                        children: [
-                                            Text(
-                                                TextNode {
-                                                    internal_id: Ulid(
-                                                        2107260295772863255580787714977321232,
-                                                    ),
-                                                    id: None,
-                                                    attrs: {},
-                                                    template: "Temperatur: {{ temp }}°C",
-                                                    rendered: "Temperatur: 18.0°C",
-                                                },
-                                            ),
-                                        ],
-                                    },
-                                ),
-                            ],
+                            
                         },
                     ),
                     x: 362.0,
@@ -537,22 +184,7 @@ LayoutBox {
                                         "background-color": "#770000FF",
                                         "font-size": "38",
                                     },
-                                    children: [
-                                        Text(
-                                            TextNode {
-                                                internal_id: Ulid(
-                                                    2107260295773319813208972507410037503,
-                                                ),
-                                                id: None,
-                                                attrs: {
-                                                    "background-color": "#770000FF",
-                                                    "font-size": "38",
-                                                },
-                                                template: "{{ city }}",
-                                                rendered: "Hamburg",
-                                            },
-                                        ),
-                                    ],
+                                    
                                 },
                             ),
                             x: 386.0,
@@ -592,19 +224,7 @@ LayoutBox {
                                     id: None,
                                     tag: "p",
                                     attrs: {},
-                                    children: [
-                                        Text(
-                                            TextNode {
-                                                internal_id: Ulid(
-                                                    2107260295772863255580787714977321232,
-                                                ),
-                                                id: None,
-                                                attrs: {},
-                                                template: "Temperatur: {{ temp }}°C",
-                                                rendered: "Temperatur: 18.0°C",
-                                            },
-                                        ),
-                                    ],
+                                    
                                 },
                             ),
                             x: 362.0,
@@ -651,60 +271,7 @@ LayoutBox {
                                 "align": "center",
                                 "id": "fu",
                             },
-                            children: [
-                                Element(
-                                    ElementNode {
-                                        internal_id: Ulid(
-                                            2107260295804878189397776204699195815,
-                                        ),
-                                        id: None,
-                                        tag: "h2",
-                                        attrs: {
-                                            "background-color": "#770000FF",
-                                            "font-size": "38",
-                                        },
-                                        children: [
-                                            Text(
-                                                TextNode {
-                                                    internal_id: Ulid(
-                                                        2107260295804461091967054122250722066,
-                                                    ),
-                                                    id: None,
-                                                    attrs: {
-                                                        "background-color": "#770000FF",
-                                                        "font-size": "38",
-                                                    },
-                                                    template: "{{ city }}",
-                                                    rendered: "München",
-                                                },
-                                            ),
-                                        ],
-                                    },
-                                ),
-                                Element(
-                                    ElementNode {
-                                        internal_id: Ulid(
-                                            2107260295804835786848683661308999911,
-                                        ),
-                                        id: None,
-                                        tag: "p",
-                                        attrs: {},
-                                        children: [
-                                            Text(
-                                                TextNode {
-                                                    internal_id: Ulid(
-                                                        2107260295804932208074746270692719255,
-                                                    ),
-                                                    id: None,
-                                                    attrs: {},
-                                                    template: "Temperatur: {{ temp }}°C",
-                                                    rendered: "Temperatur: 24.0°C",
-                                                },
-                                            ),
-                                        ],
-                                    },
-                                ),
-                            ],
+                            
                         },
                     ),
                     x: 362.0,
@@ -724,22 +291,7 @@ LayoutBox {
                                         "background-color": "#770000FF",
                                         "font-size": "38",
                                     },
-                                    children: [
-                                        Text(
-                                            TextNode {
-                                                internal_id: Ulid(
-                                                    2107260295804461091967054122250722066,
-                                                ),
-                                                id: None,
-                                                attrs: {
-                                                    "background-color": "#770000FF",
-                                                    "font-size": "38",
-                                                },
-                                                template: "{{ city }}",
-                                                rendered: "München",
-                                            },
-                                        ),
-                                    ],
+                                    
                                 },
                             ),
                             x: 384.0,
@@ -779,19 +331,7 @@ LayoutBox {
                                     id: None,
                                     tag: "p",
                                     attrs: {},
-                                    children: [
-                                        Text(
-                                            TextNode {
-                                                internal_id: Ulid(
-                                                    2107260295804932208074746270692719255,
-                                                ),
-                                                id: None,
-                                                attrs: {},
-                                                template: "Temperatur: {{ temp }}°C",
-                                                rendered: "Temperatur: 24.0°C",
-                                            },
-                                        ),
-                                    ],
+                                    
                                 },
                             ),
                             x: 362.0,

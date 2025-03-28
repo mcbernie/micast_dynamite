@@ -4,7 +4,7 @@ use im::Vector;
 use scraper::{ElementRef, Html, Node, Selector};
 use ulid::Ulid;
 
-use crate::{document::VDom, vdom::{ElementNode, TextNode, VNode}};
+use crate::{document::VDom, styles::Style, vdom::{ElementNode, TextNode, VNode}};
 
 
 pub fn parse_element(element: &ElementRef) -> VNode {
@@ -27,18 +27,20 @@ fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bo
     //let for_each = element.value().attr("for-each").map(|s| s.to_string());
 
     let mut attrs = HashMap::new();
-    //let mut styles = HashMap::new();
+    let mut styles = HashMap::new();
 
     for attr in element.value().attrs() {
         let key = attr.0.to_string();
         let value = attr.1.to_string();
         if key == "style" {
-            let a = parse_styles(&value);
-            a.into_iter().for_each(|(k, v)| {attrs.insert(k, v);});
+            let parsed_styles = parse_styles(&value);
+            styles.extend(parsed_styles);
         } else {
             attrs.insert(key, value);
         }
     }
+
+    let style = Style::from_hashmap(&styles);
 
     let children = element
         .children()
@@ -63,6 +65,7 @@ fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bo
                             internal_id: Ulid::new(),
                             id: None,
                             attrs: attrs.clone(),
+                            style: style.clone(),
                             template: text.trim().to_string(),
                             rendered: String::new(),
                         })))
@@ -82,6 +85,7 @@ fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bo
         id,
         tag,
         attrs,
+        style,  
         children,
     }))
 }

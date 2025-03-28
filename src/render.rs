@@ -186,7 +186,7 @@ pub fn build_layout_tree<'a>(
                 let child_box = build_layout_tree(
                     child, 
                     child_x + pad_left as f32, 
-                    child_y + pad_top as f32 + 20.0, 
+                    child_y + pad_top as f32 + 50.0, 
                     sizes, 
                 );
                 layout_children.push(child_box);
