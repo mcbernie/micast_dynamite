@@ -67,7 +67,7 @@ fn parse_element_internal(element: &ElementRef, inside_template: bool, start: bo
                             attrs: attrs.clone(),
                             style: style.clone(),
                             template: text.trim().to_string(),
-                            rendered: String::new(),
+                            rendered: text.trim().to_string(),
                         })))
                     }
                 },
@@ -161,7 +161,7 @@ pub fn parse_html_to_vdom(html: &str) -> Result<VDom, String> {
 }
 
 
-fn parse_styles(style_str: &str) -> HashMap<String, String> {
+pub fn parse_styles(style_str: &str) -> HashMap<String, String> {
     let mut styles = HashMap::new();
     for rule in style_str.split(';') {
         let mut parts = rule.splitn(2, ':').map(|s| s.trim().to_string());

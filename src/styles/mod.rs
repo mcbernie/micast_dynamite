@@ -3,14 +3,26 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::num::ParseFloatError;
 
+use ::taffy::{Display, LengthPercentage};
+
+use crate::parse_color;
+use crate::parser::parse_styles;
+
 /// Die zentrale Struktur, die die für dein Layout relevanten Style-Eigenschaften kapselt.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Style {
     pub margin: Option<EdgeValues>,
     pub padding: Option<EdgeValues>,
     pub width: Option<Dimension>,
     pub height: Option<Dimension>,
+    pub display: Option<Display>,
     pub flex_direction: Option<FlexDirection>,
+    pub font_size: Option<f32>,
+    pub background_color: Option<[u8; 4]>,
+    pub color: Option<[u8; 4]>,
+    pub gap: Option<Dimension>,
+    pub align_items: Option<AlignItems>,
+    pub justify_content: Option<AlignContent>,
     // Weitere Eigenschaften können hier ergänzt werden.
 }
 
@@ -99,6 +111,16 @@ impl FromStr for Dimension {
     }
 }
 
+impl Into<LengthPercentage> for Dimension {
+    fn into(self) -> LengthPercentage {
+        match self {
+            Dimension::Auto => LengthPercentage::Length(0.0),
+            Dimension::Points(val) => LengthPercentage::Length(val),
+            Dimension::Percent(val) => LengthPercentage::Percent(val / 100.0),
+        }
+    }
+}
+
 /// Enum zur Repräsentation der Flex-Richtung.
 #[derive(Debug, Clone, PartialEq)]
 pub enum FlexDirection {
@@ -118,6 +140,98 @@ impl FromStr for FlexDirection {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AlignItems {
+    /// Items are packed toward the start of the axis
+    Start,
+    /// Items are packed toward the end of the axis
+    End,
+    /// Items are packed towards the flex-relative start of the axis.
+    ///
+    /// For flex containers with flex_direction RowReverse or ColumnReverse this is equivalent
+    /// to End. In all other cases it is equivalent to Start.
+    FlexStart,
+    /// Items are packed towards the flex-relative end of the axis.
+    ///
+    /// For flex containers with flex_direction RowReverse or ColumnReverse this is equivalent
+    /// to Start. In all other cases it is equivalent to End.
+    FlexEnd,
+    /// Items are packed along the center of the cross axis
+    Center,
+    /// Items are aligned such as their baselines align
+    Baseline,
+    /// Stretch to fill the container
+    Stretch,
+}
+
+impl FromStr for AlignItems {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_lowercase().as_str() {
+            "start" => Ok(AlignItems::Start),
+            "end" => Ok(AlignItems::End),
+            "flex-start" => Ok(AlignItems::FlexStart),
+            "flex-end" => Ok(AlignItems::FlexEnd),
+            "center" => Ok(AlignItems::Center),
+            "baseline" => Ok(AlignItems::Baseline),
+            "stretch" => Ok(AlignItems::Stretch),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AlignContent {
+    /// Items are packed toward the start of the axis
+    Start,
+    /// Items are packed toward the end of the axis
+    End,
+    /// Items are packed towards the flex-relative start of the axis.
+    ///
+    /// For flex containers with flex_direction RowReverse or ColumnReverse this is equivalent
+    /// to End. In all other cases it is equivalent to Start.
+    FlexStart,
+    /// Items are packed towards the flex-relative end of the axis.
+    ///
+    /// For flex containers with flex_direction RowReverse or ColumnReverse this is equivalent
+    /// to Start. In all other cases it is equivalent to End.
+    FlexEnd,
+    /// Items are centered around the middle of the axis
+    Center,
+    /// Items are stretched to fill the container
+    Stretch,
+    /// The first and last items are aligned flush with the edges of the container (no gap)
+    /// The gap between items is distributed evenly.
+    SpaceBetween,
+    /// The gap between the first and last items is exactly THE SAME as the gap between items.
+    /// The gaps are distributed evenly
+    SpaceEvenly,
+    /// The gap between the first and last items is exactly HALF the gap between items.
+    /// The gaps are distributed evenly in proportion to these ratios.
+    SpaceAround,
+}
+
+impl FromStr for AlignContent {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_lowercase().as_str() {
+            "start" => Ok(AlignContent::Start),
+            "end" => Ok(AlignContent::End),
+            "flex-start" => Ok(AlignContent::FlexStart),
+            "flex-end" => Ok(AlignContent::FlexEnd),
+            "center" => Ok(AlignContent::Center),
+            "stretch" => Ok(AlignContent::Stretch),
+            "space-between" => Ok(AlignContent::SpaceBetween),
+            "space-evenly" => Ok(AlignContent::SpaceEvenly),
+            "space-around" => Ok(AlignContent::SpaceAround),
+            _ => Err(()),
+        }
+    }
+}
+
 
 /// Hilfsfunktion, um EdgeValues aus einer HashMap zu parsen.
 /// Zuerst wird der Shorthand-Wert (z. B. "margin") genutzt, dann werden
@@ -163,6 +277,7 @@ fn parse_edge_from_hashmap(map: &HashMap<String, String>, property: &str) -> Opt
     }
 }
 
+
 impl Style {
     /// Erstellt einen `Style`-Struct aus einer HashMap, in der die Schlüssel die CSS-Property-Namen sind.
     /// Dabei wird versucht, die einzelnen Werte zu parsen.
@@ -176,13 +291,57 @@ impl Style {
         let flex_direction = map.get("flex-direction")
             .and_then(|s| s.parse::<FlexDirection>().ok());
 
+        let justify_content = map.get("justify-content")
+            .and_then(|s| s.parse::<AlignContent>().ok());
+
+        let align_items = map.get("align-items")
+            .and_then(|s| s.parse::<AlignItems>().ok());
+
+    
+        let display = map.get("display").map(|s| {
+            match s.as_str() {
+                "block" => Display::Block,
+                "flex" => Display::Flex,
+                "grid" => Display::Grid,
+                _ => Display::None,
+            }
+        });
+
+        let font_size = map.get("font-size")
+            .and_then(|s| s.parse::<f32>().ok());
+
+        let background_color = map.get("background-color")
+            .and_then(|s| {
+                parse_color(s)
+            });
+
+        let color = map.get("color")
+            .and_then(|s| {
+                parse_color(s)
+            });
+
+        let gap = map.get("gap")
+            .and_then(|s| s.parse::<Dimension>().ok());
+        
         Self {
             margin,
             padding,
             width,
             height,
             flex_direction,
+            display,
+            font_size,
+            background_color,
+            color,
+            gap,
+            justify_content,
+            align_items,
         }
+    }
+
+    pub fn from_str(value: &str) -> Self {
+        let parsed_styles = parse_styles(&value);
+        Self::from_hashmap(&parsed_styles)
     }
 }
 

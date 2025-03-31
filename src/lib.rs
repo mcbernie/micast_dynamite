@@ -9,7 +9,8 @@ pub mod styles;
 use std::collections::HashMap;
 
 use log::warn;
-use render::{build_layout_tree, render_layout_tree, render_node_postorder};
+use render::render_dom;
+use taffy::{NodeId, Style};
 use vdom::diff_vnode;
 use parser::load_lua_scripts;
 use scripting::Engine;
@@ -22,6 +23,7 @@ pub use parser::parse_color;
 
 pub struct Dynamite<R: Renderer> {
     pub vdom: document::VDom,
+    pub layout: layout::LayoutMapping,
     engine: Engine,
     first_run: bool,
     renderer: R
@@ -36,11 +38,15 @@ impl<R: Renderer> Dynamite<R> {
         let scripts = load_lua_scripts(html)?;
         engine.load_scripts(scripts).map_err(|e| e.to_string())?;
 
+        let mut layout = layout::LayoutMapping::new();
+        let _ = layout.build_tree(&vdom.root, None);
+
         Ok(Self {
             vdom,
             engine,
             first_run: true,
-            renderer: render_backend
+            renderer: render_backend,
+            layout
         })
     }
 
@@ -53,10 +59,12 @@ impl<R: Renderer> Dynamite<R> {
         let old_vdom = self.vdom.root.clone();
         self.engine.begin(&self.vdom).unwrap();
 
+        let mut first_draw = true;
         if self.first_run {
             self.first_run = false;
             self.engine.call_onload()?;
         } else {
+            first_draw = false;
             self.engine.call_onupdates()?;
         }
 
@@ -65,18 +73,40 @@ impl<R: Renderer> Dynamite<R> {
         let patch = diff_vnode(&old_vdom, &vdom);
 
         //warn!("old_vdom: {:?}", old_vdom);
-        //warn!("vdom: {:?}", vdom);
 
-        if let Some(patch) = patch {
-            let mut sizes = HashMap::new();
-            let size = render_node_postorder(&vdom, ctx, &mut self.renderer, &mut sizes, size);
+        if let Some(patch) = patch { //if patch.is_some() || first_draw {
 
-            let layout_box = build_layout_tree(&vdom, 0.0,0.0, &sizes);
-            println!("{:#?}",&layout_box);
-            render_layout_tree(ctx, &layout_box, &mut self.renderer);
+            //warn!("vdom: {:#?}", vdom);
+
+            // take the old VDOM, apply the patch and generate a new layout
+            self.layout.apply_diff(&old_vdom, &patch);
+            //self.layout.taffy.clear();
+            //self.layout.id_map.clear();
+            // create first node!
+            let node = self.layout.build_tree(&vdom, None);
+
             self.vdom.root = vdom;
-            return Ok(true);
-            //self.renderer.render(&patch);
+
+            let dirty = self.layout.taffy.dirty(node).unwrap_or(false);
+
+            // render the new layout
+            // TODO: Implement the rendering
+            if dirty {
+                // compute the layout for the new layout
+                self.layout.compute_layout(
+                    &node,
+                    size.0 as f32,
+                    size.1 as f32,
+                    &self.renderer, 
+                    ctx
+                );
+
+                self.layout.taffy.print_tree(node);
+                let _ = render_dom(&self.layout, &self.vdom.root, &mut self.renderer, ctx, (0.0, 0.0));
+                warn!("something is dirty");
+            }
+            
+            return Ok(dirty)
         }
 
         Ok(false)

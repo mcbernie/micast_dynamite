@@ -1,14 +1,14 @@
-use super::{Dimension, EdgeValues, FlexDirection, Style};
+use super::{AlignContent, AlignItems, Dimension, EdgeValues, FlexDirection, Style};
 
-// Importiere Taffy-Typen (Taffy 0.7.7)
 use taffy::style::{
     Dimension as TaffyDimension,
     FlexDirection as TaffyFlexDirection,
+    Display,
     LengthPercentage,
     LengthPercentageAuto,
     Style as TaffyStyle,
 };
-use taffy::geometry::{Rect, Size};
+use taffy::geometry::{self, Rect, Size};
 
 impl Style {
 
@@ -20,6 +20,7 @@ impl Style {
     /// - flex_direction in Taffys FlexDirection gemappt
     pub fn to_taffy_style(&self) -> TaffyStyle {
         TaffyStyle {
+            display: self.display.clone().map(Into::into).unwrap_or(Display::Block),
             flex_direction: self.flex_direction.clone()
                 .map(|fd| match fd {
                     FlexDirection::Row => TaffyFlexDirection::Row,
@@ -48,7 +49,55 @@ impl Style {
                     bottom: LengthPercentage::Length(0.0),
                     left: LengthPercentage::Length(0.0),
                 }),
+            gap: self.gap.as_ref()
+                .map(|d| {
+                    let a: LengthPercentage = d.clone().into();
+                    geometry::Size {
+                        width: a,
+                        height: a,
+                    }
+                }).unwrap_or(geometry::Size {
+                    width: LengthPercentage::Length(0.0),
+                    height: LengthPercentage::Length(0.0),
+                }),
+
+            align_items: self.align_items.clone()
+                .map(Into::into),
+            
+            justify_content: self.justify_content.clone()
+                .map(Into::into),
+            
             ..Default::default()
+        }
+    }
+}
+
+impl From<AlignContent> for taffy::style::AlignContent {
+    fn from(ac: AlignContent) -> Self {
+        match ac {
+            AlignContent::Start => taffy::style::AlignContent::Start,
+            AlignContent::End => taffy::style::AlignContent::End,
+            AlignContent::FlexStart => taffy::style::AlignContent::FlexStart,
+            AlignContent::FlexEnd => taffy::style::AlignContent::FlexEnd,
+            AlignContent::Center => taffy::style::AlignContent::Center,
+            AlignContent::Stretch => taffy::style::AlignContent::Stretch,
+            AlignContent::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
+            AlignContent::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
+            AlignContent::SpaceAround => taffy::style::AlignContent::SpaceAround,
+        }
+    }
+}
+
+impl From<AlignItems> for taffy::style::AlignItems {
+    fn from(ai: AlignItems) -> Self {
+        match ai {
+            AlignItems::Start => taffy::style::AlignItems::Start,
+            AlignItems::End => taffy::style::AlignItems::End,
+            AlignItems::FlexStart => taffy::style::AlignItems::FlexStart,
+            AlignItems::FlexEnd => taffy::style::AlignItems::FlexEnd,
+            AlignItems::Center => taffy::style::AlignItems::Center,
+            AlignItems::Baseline => taffy::style::AlignItems::Baseline,
+            AlignItems::Stretch => taffy::style::AlignItems::Stretch,
         }
     }
 }
@@ -82,8 +131,8 @@ impl From<Dimension> for TaffyDimension {
     fn from(dim: Dimension) -> Self {
         match dim {
             Dimension::Auto => TaffyDimension::Auto,
-            Dimension::Points(val) => TaffyDimension::Length(val),
-            Dimension::Percent(val) => TaffyDimension::Percent(val),
+            Dimension::Points(val) => TaffyDimension::Length(val / 100.0),
+            Dimension::Percent(val) => TaffyDimension::Percent(val / 100.0),
         }
     }
 }
@@ -137,6 +186,7 @@ mod tests {
             margin: Some(EdgeValues::from_str("10 20 30 40px").unwrap()),
             padding: Some(EdgeValues::from_str("5 10 15 20px").unwrap()),
             flex_direction: Some(FlexDirection::Row),
+            ..Default::default()
         };
 
         let taffy_style = s.to_taffy_style();

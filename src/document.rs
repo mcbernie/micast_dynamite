@@ -38,12 +38,13 @@ impl VDom {
         }
     }
 
-    pub fn add_element(&mut self, target_id: &str, child: VNode) -> Result<(), String> {
+    pub fn add_element(&mut self, target_id: &str, child: VNode) -> Result<Ulid, String> {
         let target_ulid = self.id_map.get(target_id).ok_or("target id not found")?;
         let target = self.root.find_by_internal_id_mut(target_ulid).ok_or("target not found")?;
         if let VNode::Element(el) = target {
+            let child_id = child.get_internal_id().clone();
             el.children.push_back(child);
-            Ok(())
+            Ok(child_id)
         } else {
             Err("target is not an element".to_string())
         }

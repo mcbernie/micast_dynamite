@@ -1,9 +1,11 @@
+mod timer;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use log::warn;
 use mlua::{AnyUserData, Lua, Result, UserDataMethods, Value};
 use regex::Regex;
 use reqwest::blocking::get;
 use serde_json::Value as JsonValue;
+use timer::init_timer_methods;
 use ulid::Ulid;
 
 use crate::{document::{self, FindByIdMut}, vdom::{self, ElementNode, TextNode, VNode}, render};
@@ -18,6 +20,7 @@ pub struct ElementContext {
 impl mlua::UserData for ElementContext {
     fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("set_text", |lua, this, (key, value): (String, String)| {
+
             let globals = lua.globals();
             this.values.borrow_mut().insert(key.clone(), value.clone());
 
@@ -27,18 +30,24 @@ impl mlua::UserData for ElementContext {
             };
 
             if has_node {
+                warn!("set_text: temp_node found");
                 let mut temp_node = this.temp_node.borrow_mut();
                 let mut taked_node = temp_node.take().unwrap();
                 render_texts_in_subtree(&mut taked_node, &this.values.borrow());
                 *temp_node = Some(taked_node);
             } else {
+                warn!("set_text: no temp_node found, using vdom");
                 let vdom_ud: mlua::AnyUserData = globals.get("_vdom")?;
                 let vdom_context = vdom_ud.borrow::<DynamiteContext>()?;
                 let vdom = vdom_context.0.clone();
                 let mut borrowed_vdom = vdom.borrow_mut();
 
                 if let Some(node) = borrowed_vdom.root.find_by_internal_id_mut(&this.internal_id) {
+                    warn!("set_text: found node in vdom");
                     render_texts_in_subtree(node, &this.values.borrow());
+                } else {
+                    warn!("set_text: node not found in vdom");
+                    return Err(mlua::Error::external("node not found in vdom"));
                 }
             }
 
@@ -199,17 +208,21 @@ impl Engine {
             let vdom_context = vdom_ud.borrow::<DynamiteContext>()?;
             let vdom = vdom_context.0.clone();
             // Hole zuerst den VNodeHandle und klone das Rc, um das Element zu extrahieren.
-            let node = node_ud.borrow_mut::<ElementContext>()?;
+            let mut node = node_ud.borrow_mut::<ElementContext>()?;
 
             if let Some(temp_node) = node.temp_node.take() {
                 let mut vdom = vdom.borrow_mut();
-                vdom.add_element(&target_id, temp_node)
+                let id = vdom.add_element(&target_id, temp_node)
                     .map_err(|e| mlua::Error::external(format!("add_element failed: {}", e)))?;
+
+                node.internal_id = id;
             }
             Ok(())
         })?;
-        
+
         globals.set("add_element", add_element_func)?;
+
+        init_timer_methods(lua)?;
         Ok(())
     }
 
@@ -242,11 +255,11 @@ impl Engine {
 
         let mut search_in_node = |node: &vdom::VNode| {
             if let vdom::VNode::Element( ElementNode { attrs, .. }) = node {
-                if let Some(onupdate) = attrs.get("onupdate") {
+                if let Some(onupdate) = attrs.get("on:update") {
                     let onupdate_fn = self.lua.load(format!("{}()", onupdate)).into_function().unwrap();
                     onupdate_fns.push(onupdate_fn);
                 }
-                if let Some(onload) = attrs.get("onload") {
+                if let Some(onload) = attrs.get("on:load") {
                     let onload_fn = self.lua.load(format!("{}()", onload)).into_function().unwrap();
                     onload_fns.push(onload_fn);
                 }
@@ -262,7 +275,6 @@ impl Engine {
 
     pub fn call_onupdates(&self) -> std::result::Result<(), String> {
         for onupdate_fn in &self.onupdate_fns {
-            warn!("onupdate_fn: {:?}", onupdate_fn);
             onupdate_fn.call::<()>(()).map_err(|e| format!("onupdate failed: {}", e))?;
         }
         Ok(())
@@ -270,11 +282,8 @@ impl Engine {
 
     pub fn call_onload(&self) -> std::result::Result<(), String> {
         for onload_fn in &self.onload_fns {
-            warn!("onload_fn: {:?}", onload_fn);
             onload_fn.call::<()>(()).map_err(|e| format!("onload failed: {}", e))?;
         }
         Ok(())
     }
-
-
 }

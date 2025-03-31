@@ -2,7 +2,7 @@ use im::Vector;
 use ulid::Ulid;
 use std::collections::HashMap;
 
-use crate::{document::{FindBy, FindByIdMut}, styles::Style};
+use crate::{document::{FindBy, FindByIdMut}, layout::NodeContext, styles::Style};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum VNode {
@@ -249,6 +249,20 @@ impl VNode {
             VNode::Text(t) => {
                 t.internal_id = Ulid::new();
             }
+        }
+    }
+
+    pub fn get_node_context(&self) -> NodeContext {
+        match self {
+            VNode::Element(_el) => NodeContext::Element,
+            VNode::Text(text) => NodeContext::Text(text.clone())
+        }
+    }
+
+    pub fn get_style(&self) -> &Style {
+        match self {
+            VNode::Element(el) => &el.style,
+            VNode::Text(t) => &t.style,
         }
     }
 }

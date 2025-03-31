@@ -13,7 +13,7 @@ regex = "1.11.1"
 reqwest = { version = "0.12.15", features = ["blocking"] }
 scraper = "0.23.1"
 serde_json = "1.0.140"
-taffy = "0.7.7"
+taffy = { version = "0.7.7" }
 ulid = "1.2.1"
 
 [dev-dependencies]

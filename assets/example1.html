@@ -13,27 +13,42 @@
         }
     </style>
 </head>
-<body onload="load_data" onupdate="update_data">
+<body on:load="load_data" on:update="update_data" style="background-color:#00000000; width:100%; height:100%;display:flex; justify-content:center; align-items: center;">
     
     <template id="weather_card">
-        <div id="fu" class="mard" style="background-color: #44ff00ff; align: center; flex-direction: column; margin-bottom: 80px;">
-            <h2 style="background-color: #770000FF;font-size: 38;padding-left: 40px;">{{ city }}</h2>
+        <div id="fu" class="mard" style="background-color: #44ff00ff; text-align: center; flex-direction: column; display:flex; padding: 10px;">
+            <h2 style="background-color: #770000FF;font-size: 38;text-align: center; padding: 10px;">{{ city }}</h2>
             <p>Temperatur: {{ temp }}°C</p>
         </div>
     </template>
 
-    <div id="weather_list" style="width: 100%; height: 100%; align: center;padding-top: 40px;background-color: #223366ff;"></div>
+    <div id="weather_list" style="text-align: center;padding-top: 40px;background-color: #223366ff; display:flex; flex-direction: row;gap: 10px;">
+        
+    </div>
 
     <!-- 🌍 Lua-Skript -->
     <script type="text/lua">
-        counter = 0
+        counter = 1
+        second_card = nil
+        start_time = create_timer()
 
         function update_data()
-            counter = counter + 1
-            local second_card = create_element("weather_card")
-            second_card:set_text("city", "Kackhausen")
-            second_card:set_text("temp", tostring(counter))
-            add_element("weather_list", second_card)
+
+            if second_card == nil then
+                second_card = create_element("weather_card")
+                second_card:set_text("city", "Kackhausen")
+                second_card:set_text("temp", tostring(counter))
+                add_element("weather_list", second_card)
+            else 
+                local elapsed = start_time:elapsed() 
+                if elapsed > 5.0 then
+                    counter = counter * 10
+                    if counter < 100000 then
+                        second_card:set_text("temp", tostring(counter))
+                    end
+                    start_time:reset()
+                end
+            end
         end
 
         function load_data()

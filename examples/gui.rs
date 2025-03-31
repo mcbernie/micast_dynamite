@@ -9,6 +9,7 @@ use gl_render::glutin::event::{Event, WindowEvent};
 use gl_render::glutin::event_loop::ControlFlow;
 use glutin::event_loop::EventLoop;
 use glutin::window::WindowBuilder;
+use micast_dynamite::styles::Style;
 use micast_dynamite::{parse_color, Renderer};
 
 pub struct VGRenderer {
@@ -28,8 +29,8 @@ impl VGRenderer {
 
 impl Renderer for VGRenderer {
     type Context = Canvas<OpenGl>; 
-    fn draw_text(&mut self, ctx: &mut Self::Context, text: &str, attrs: &std::collections::HashMap<String, String>, x: f32, y: f32) {
-        let font_size = attrs.get("font-size").and_then(|s| s.parse::<f32>().ok()).unwrap_or(16.0);
+    fn draw_text(&mut self, ctx: &mut Self::Context, text: &str, style: &Style, x: f32, y: f32) {
+        let font_size = style.font_size.unwrap_or(16.0);
         ctx.fill_text(x, y, text, 
             &Paint::color(Color::white())
                     .with_font(&[self.default_font])
@@ -38,19 +39,19 @@ impl Renderer for VGRenderer {
             ).unwrap();
     }
 
-    fn draw_element(&mut self, ctx: &mut Self::Context, tag: &str, attrs: &std::collections::HashMap<String, String>, x: f32, y: f32, width: f32, height: f32) {
-        let color_from_map = parse_color(attrs.get("background-color").unwrap_or(&String::from("#00000000"))).unwrap();
+    fn draw_element(&mut self, ctx: &mut Self::Context, tag: &str, style: &Style, x: f32, y: f32, width: f32, height: f32) {
+        let color = style.background_color.unwrap_or([0, 80, 0, 255]);
         let mut p = Path::new();
-        p.rect(x, y, width, height);
+        p.rect(x,y, width, height);
         p.close();
         ctx.fill_path(
             &p,
-            &Paint::color(Color::rgba(color_from_map[0], color_from_map[1], color_from_map[2], color_from_map[3]))
+            &Paint::color(Color::rgba(color[0], color[1], color[2], color[3]))
         );
     }
 
-    fn measure_text(&self, ctx: &mut Self::Context, text: &str, attrs: &std::collections::HashMap<String, String>) -> (u32, u32) {
-        let font_size = attrs.get("font-size").and_then(|s| s.parse::<f32>().ok()).unwrap_or(16.0);
+    fn measure_text(&self, ctx: &Self::Context, text: &str, style: &Style) -> (u32, u32) {
+        let font_size = style.font_size.unwrap_or(16.0);
         let measurements = ctx.measure_text(0.0, 0.0, text, 
             &Paint::color(Color::white())
                     .with_font(&[self.default_font])
@@ -62,6 +63,8 @@ impl Renderer for VGRenderer {
 }
 
 fn main() {
+    env_logger::init();
+
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("micast_dynamite - GUI Example")
@@ -132,18 +135,17 @@ fn main() {
                 }
 
             },
-            //Event::MainEventsCleared => {
-            //    // RENDER HERE
-            //    std::thread::yield_now();
-            //}
-            Event::RedrawRequested(_) => {
-                // Übergib den Frame an deinen dynamischen Renderer
+            Event::MainEventsCleared => {
+                // RENDER HERE
+                std::thread::yield_now();
                 let refresh = example_renderer.run_frame(&mut canvas, (1920, 1080)).unwrap_or_default(); // Beispielname
-
                 if refresh {
-                    canvas.flush();
+                    windowed_context.window().request_redraw();
                 }
-                //windowed_context.swap_buffers().unwrap();
+
+            }
+            Event::RedrawRequested(_) => {
+                canvas.flush();
                 windowed_context.swap_buffers().unwrap();
             }
             _ => *control_flow = ControlFlow::Poll,
